@@ -1,3 +1,16 @@
 fastapi
 openai
 requests
+pypdf
+python-magic
+langchain
+langchain-community
+langchain-core
+torch
+torchvision
+torchaudio
+transformers
+langchain-huggingface
+pymilvus
+langchain-ollama
+sentence-transformers
