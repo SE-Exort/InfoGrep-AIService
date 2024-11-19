@@ -37,10 +37,10 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
       
       - name: Build
-        run: docker build .
+        run: docker build -t infogrep/ai-service .
 
       - name: Tag
-        run: docker image tag infogrep-ai-service ghcr.io/se-exort/ai-service:latest
+        run: docker image tag infogrep/ai-service ghcr.io/se-exort/ai-service:latest
       
       - name: Push image
         run: docker push ghcr.io/se-exort/ai-service:latest
