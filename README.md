@@ -1,0 +1,1 @@
+This service requires Ollama running. To get started, set up Ollama for Docker following instructions here: https://hub.docker.com/r/ollama/ollama
