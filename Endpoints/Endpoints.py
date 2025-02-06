@@ -2,7 +2,7 @@ from fastapi import APIRouter, HTTPException, Request
 
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
 from Parsers.threadpool import ParserThreadPool
-from Parsers import *
+from Parsers import Parser
 
 from LLMWrapers import Ollama, OpenAI
 
