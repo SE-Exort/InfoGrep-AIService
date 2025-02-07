@@ -1,12 +1,66 @@
 from fastapi import APIRouter, HTTPException, Request
 
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
+from Parsers.threadpool import ParserThreadPool
+from Parsers import Parser
 
 from LLMWrapers import Ollama, OpenAI
 
 import requests
-router = APIRouter(prefix='/api', tags=["api"]);
 
+router = APIRouter(prefix='/api', tags=["api"]);
+documentParserThreadPool = ParserThreadPool(10)
+
+supportedFileTypes = dict();
+for cls in Parser.Parser.__subclasses__():
+    supportedFileTypes.update({cls.fileType(): cls})
+
+@router.post('/start_parsing')
+async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
+    #authenticate user
+    #user must have a valid session cookie
+    user = authentication_sdk.User(cookie, headers=request.headers)
+    user_uuid = user.profile()['user_uuid'];
+    room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers);
+
+    parser: Parser;
+    try:
+        parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie)
+    except:
+        return 500
+
+    documentParserThreadPool.submit_task(parser)
+    return 200;
+
+@router.post('/cancel_parsing')
+def post_cancel_parsing(request: Request, chatroom_uuid, file_uuid, cookie):
+    #authenticate user
+    #user must have a valid session cookie
+    user = authentication_sdk.User(cookie, headers=request.headers)
+    user_uuid = user.profile()['user_uuid'];
+    room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers);
+
+    taskkey = documentParserThreadPool.create_taskkey(chatroom_uuid=chatroom_uuid,file_uuid=file_uuid)
+
+    documentParserThreadPool.cancel_task(taskkey=taskkey)
+    
+    return 200;
+
+@router.get('/parsing_status')
+def get_parsing_status(request: Request, chatroom_uuid, file_uuid, cookie):
+    #authenticate user
+    #user must have a valid session cookie
+    user = authentication_sdk.User(cookie, headers=request.headers)
+    user_uuid = user.profile()['user_uuid'];
+    room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers);
+    
+    taskkey = documentParserThreadPool.create_taskkey(chatroom_uuid=chatroom_uuid,file_uuid=file_uuid)
+    documentParserThreadPool.get_task_status(taskkey=taskkey)
+    return 200;
+
+@router.get('/file_types')
+async def get_file_types():
+    return list(supportedFileTypes.keys())
 
 """For now we just have a weird setup to generate system messages.
 In the future, we should take the chatroom uuid, the cookie, and the message uuid?????

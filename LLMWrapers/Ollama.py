@@ -1,13 +1,10 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from LLMWrapers.AI import AIWrapper
 
-from langchain_community.document_loaders import PyPDFLoader
-from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Milvus
 
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
-from langchain_ollama import ChatOllama
 
 class Ollama(AIWrapper):
     def summarize(self, query):
