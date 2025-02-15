@@ -11,7 +11,10 @@ class Ollama(AIWrapper):
         embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
 
         # Find the closest few documents
-        vector_store = Milvus(embedding_function=embeddings)
+        vector_store = Milvus(embedding_function=embeddings, 
+                              connection_args={
+                                  "address": self.milvus_address
+                              })
         query_embedding = embeddings.embed_query(query)
         docs = vector_store.similarity_search_by_vector(query_embedding)
 
