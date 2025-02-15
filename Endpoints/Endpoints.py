@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, Request
 
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
+from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 from Parsers.threadpool import ParserThreadPool
 from Parsers import Parser
 
@@ -92,7 +93,7 @@ async def get_models(request: Request, cookie):
     #user must have a valid session cookie
     user = authentication_sdk.User(cookie, request.headers)
 
-    x = requests.get('http://localhost:11434/api/tags')
+    x = requests.get(f'http://{ollama_service_host}/api/tags')
     model_list = x.json()['models']
     result = ["openai"]
     for model in model_list:

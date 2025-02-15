@@ -1,5 +1,6 @@
 from langchain_huggingface import HuggingFaceEmbeddings
 from LLMWrapers.AI import AIWrapper
+from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 
 from langchain_community.vectorstores import Milvus
 
@@ -27,7 +28,7 @@ class Ollama(AIWrapper):
                 ("human", "{user_input}"),
             ])
 
-        model = OllamaLLM(model="deepseek-r1")
+        model = OllamaLLM(model="deepseek-r1", base_url=ollama_service_host)
 
         chain = template | model
 
