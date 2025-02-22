@@ -3,7 +3,6 @@ import os
 from fastapi import FastAPI
 from starlette.middleware.cors import CORSMiddleware
 import uvicorn
-import requests
 
 from Endpoints.Endpoints import router
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
@@ -31,10 +30,5 @@ AIService.add_middleware(
 
 AIService.include_router(router)
 
-DefaultModels = ["deepseek-r1"]
 if __name__ == "__main__":
-    # ensure Ollama is running and has default models
-    for model in DefaultModels:
-        r = requests.post(f'http://{ollama_service_host}/api/pull', json={'model': model})
-        ai_service_logger.info(r.text)
     uvicorn.run(AIService, host="0.0.0.0", port=8004)
