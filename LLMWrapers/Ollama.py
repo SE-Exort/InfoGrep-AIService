@@ -1,4 +1,5 @@
 from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from LLMWrapers.AI import AIWrapper
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 
@@ -8,14 +9,11 @@ from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 
 class Ollama(AIWrapper):
-    def summarize(self, query):
-        embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-mpnet-base-v2")
+    def summarize(self, query: str, embedding_model: str, chat_model: str) -> str:
+        embeddings = OllamaEmbeddings(model=embedding_model)
 
         # Find the closest few documents
-        vector_store = Milvus(embedding_function=embeddings, 
-                              connection_args={
-                                  "address": self.milvus_address
-                              })
+        vector_store = Milvus(embedding_function=embeddings, connection_args={"address": self.milvus_address})
         query_embedding = embeddings.embed_query(query)
         docs = vector_store.similarity_search_by_vector(query_embedding)
 
@@ -28,7 +26,7 @@ class Ollama(AIWrapper):
                 ("human", "{user_input}"),
             ])
 
-        model = OllamaLLM(model="deepseek-r1", base_url=ollama_service_host)
+        model = OllamaLLM(model=chat_model, base_url=ollama_service_host)
 
         chain = template | model
 

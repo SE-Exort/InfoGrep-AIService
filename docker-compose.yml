@@ -1,0 +1,55 @@
+services:
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    # environment:
+    #   - OLLAMA_SERVICE_HOST=ollama:11434
+    volumes:
+      - ./src:/usr/src/app
+    container_name: ai-service
+    expose:
+      - '8004'
+    ports:
+      - '8004:8004'
+    depends_on:
+      ai-service-postgres:
+        condition: service_healthy
+    network_mode: "host"
+  ai-service-postgres:
+    container_name: ai-service-postgres
+    image: postgres
+    restart: always
+    # set shared memory limit when using docker-compose
+    shm_size: 128mb
+    expose:
+      - '5432'
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_PASSWORD: example
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+  ollama:
+    container_name: ollama
+    image: ollama/ollama
+    deploy:
+      resources:
+        reservations:
+          devices:
+          - driver: nvidia
+            capabilities: ["gpu"]
+            count: all
+    volumes:
+      - ollama:/root/.ollama
+    restart: always
+    expose:
+      - '11434'
+    ports:
+      - '11434:11434'
+
+volumes:
+  ollama:

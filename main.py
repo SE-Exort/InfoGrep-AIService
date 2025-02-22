@@ -6,6 +6,7 @@ import uvicorn
 import requests
 
 from Endpoints.Endpoints import router
+from Endpoints.utils import download_model
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 from InfoGrep_BackendSDK.middleware import TracingMiddleware, LoggingMiddleware
 from InfoGrep_BackendSDK.infogrep_logger.logger import Logger
@@ -35,6 +36,8 @@ DefaultModels = ["deepseek-r1"]
 if __name__ == "__main__":
     # ensure Ollama is running and has default models
     for model in DefaultModels:
-        r = requests.post(f'http://{ollama_service_host}/api/pull', json={'model': model})
-        ai_service_logger.info(r.text)
+        download_model("ollama", model)
+    
+    # ensure milvus is running
+    requests.get(f'http://localhost:19530/v1/vector/collections', headers={'Accept': 'application/json'})
     uvicorn.run(AIService, host="0.0.0.0", port=8004)

@@ -8,11 +8,10 @@ class OpenAI(AIWrapper):
         openai.api_key = api_key
         return
 
-    def summarize(self, query):
+    def summarize(self, query: str, embedding_model: str, chat_model: str) -> str:
         #get Vectors to search with
-        embmodel="text-embedding-ada-002"
         embparams = {
-            'model': embmodel,
+            'model': embedding_model,
             'input': query,
         }
 
@@ -22,14 +21,13 @@ class OpenAI(AIWrapper):
         #generate AI response
         sys_prompt = "You will be given a list of text and a query string, your job is to first filter out the most relevant result from the list of input text that answers or relates to the query string, and then summarize the relevant text to answer the query string's question."
         user_query = f"input texts are: {vectors}. the query is {query}"
-        model="gpt-4"
         messages = [
             {"role": "system", "content": sys_prompt},
             {"role": "user", "content": user_query}
         ]
 
         params = {
-            'model': model,
+            'model': chat_model,
             'messages': messages,
             'temperature': 0,
             'max_tokens': 2000,
