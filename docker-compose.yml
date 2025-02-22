@@ -12,9 +12,6 @@ services:
       - '8004'
     ports:
       - '8004:8004'
-    depends_on:
-      ai-service-postgres:
-        condition: service_healthy
     network_mode: "host"
   # ai-service-postgres:
   #   container_name: ai-service-postgres
