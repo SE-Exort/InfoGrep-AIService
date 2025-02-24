@@ -1,10 +1,10 @@
-from langchain_huggingface import HuggingFaceEmbeddings
-from langchain_ollama import OllamaEmbeddings
 from LLMWrapers.AI import AIWrapper
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
+import os
 
+from langchain_huggingface import HuggingFaceEmbeddings
+from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import Milvus
-
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_ollama.llms import OllamaLLM
 
@@ -13,7 +13,14 @@ class Ollama(AIWrapper):
         embeddings = OllamaEmbeddings(model=embedding_model)
 
         # Find the closest few documents
-        vector_store = Milvus(embedding_function=embeddings, connection_args={"address": self.milvus_address})
+        vector_store = Milvus(
+            embedding_function=embeddings, 
+            connection_args={
+                "address": self.milvus_address,
+                "user": os.environ.get("INFOGREP_MILVUS_USER"),
+                "password": os.environ.get("INFOGREP_MILVUS_PASSWORD")
+            }
+        )
         query_embedding = embeddings.embed_query(query)
         docs = vector_store.similarity_search_by_vector(query_embedding)
 
