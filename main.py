@@ -7,7 +7,7 @@ import requests
 
 from Endpoints.Endpoints import router
 from Endpoints.utils import download_model
-from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
+from InfoGrep_BackendSDK.service_endpoints import vectordb_host
 from InfoGrep_BackendSDK.middleware import TracingMiddleware, LoggingMiddleware
 from InfoGrep_BackendSDK.infogrep_logger.logger import Logger
 
@@ -39,5 +39,5 @@ if __name__ == "__main__":
         download_model("ollama", model)
     
     # ensure milvus is running
-    requests.get(f'http://localhost:19530/v1/vector/collections', headers={'Accept': 'application/json'})
+    requests.get(f'http://{vectordb_host}/v1/vector/collections', headers={'Accept': 'application/json'})
     uvicorn.run(AIService, host="0.0.0.0", port=8004)
