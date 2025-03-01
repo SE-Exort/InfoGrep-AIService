@@ -82,8 +82,6 @@ async def get_system_response(request: Request, chatroom_uuid, message, cookie, 
         wrapper = OpenAI.OpenAI(chatroom_uuid=chatroom_uuid, cookie=cookie)
     model_response = wrapper.summarize(query=message, embedding_model=embedding_model, chat_model=chat_model)
     think = re.findall(r"<think>.*<\/think>", model_response, re.DOTALL)
-    # r = room_sdk.post_message(chatroom_uuid=chatroom_uuid, message=summarizedresponse, cookie='infogrep-chatbot-summary', headers=request.headers, model=model)
-    # print(r.text)
     return {"error": False, "data": {"think": think[0] if len(think) > 0 else None, "response": re.sub(r"<think>.*<\/think>", "", model_response, flags=re.DOTALL)}}
 
 @router.get('/models')
