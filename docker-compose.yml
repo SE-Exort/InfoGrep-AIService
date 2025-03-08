@@ -5,8 +5,8 @@ services:
       dockerfile: Dockerfile
     # environment:
     #   - OLLAMA_SERVICE_HOST=ollama:11434
-    volumes:
-      - ./src:/usr/src/app
+    # volumes:
+    #   - ./src:/usr/src/app
     container_name: ai-service
     expose:
       - '8004'

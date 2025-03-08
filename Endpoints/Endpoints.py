@@ -12,7 +12,7 @@ from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
 
-from db import ModelType, ModelWhitelist, get_db
+from db import ModelType, ModelWhitelist, Provider, get_db
 from sqlalchemy.sql import text
 import re
 
@@ -101,9 +101,16 @@ class Model(BaseModel):
     provider: str
     model: str
 
+class ProviderSetting(BaseModel):
+    provider: str
+    settings: dict
+
 class UpdateModelsParams(BaseModel):
     embedding_models: List[Model]
     chat_models: List[Model]
+
+class UpdateProvidersParams(BaseModel):
+    providers: List[ProviderSetting]
 
 @router.post('/models')
 async def update_models(request: Request, sessionToken: str, models: UpdateModelsParams, db: Session = Depends(get_db)):
@@ -120,4 +127,27 @@ async def update_models(request: Request, sessionToken: str, models: UpdateModel
     db.commit()
 
     return {"error": False, "status": "MODEL_WHITELIST_UPDATED"}
+
+@router.post('/providers')
+async def update_models(request: Request, sessionToken: str, providers: UpdateProvidersParams, db: Session = Depends(get_db)):
+    user = authentication_sdk.User(sessionToken, {})
+    if not user.is_admin: return {"error": True, "status": "USER_NOT_AUTHORIZED"}
+    db.execute(text('TRUNCATE TABLE providers'))
+
+    for p in providers.providers:
+        db.add(Provider(provider=p.provider, settings=p.settings))
+    db.commit()
+
+    return {"error": False, "status": "PROVIDERS_UPDATED"}
+
+# May return sensitive info like API keys, so admin only
+@router.get('/providers')
+async def update_models(request: Request, sessionToken: str, db: Session = Depends(get_db)):
+    user = authentication_sdk.User(sessionToken, {})
+    if not user.is_admin: return {"error": True, "status": "USER_NOT_AUTHORIZED"}
+
+    return {
+        "error": False,
+        "data": db.query(Provider).all()
+    }
 

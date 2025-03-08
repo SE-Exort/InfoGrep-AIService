@@ -1,10 +1,8 @@
-from sqlalchemy import create_engine
+from sqlalchemy import JSON, create_engine
 import os
 from sqlalchemy.orm import Session
 from sqlalchemy import Column, String
-from sqlalchemy.dialects.postgresql import UUID
 from sqlalchemy.orm import declarative_base
-import uuid
 import enum
 from sqlalchemy import Enum
 
@@ -55,10 +53,15 @@ Base = declarative_base()
 class ModelWhitelist(Base):
     __tablename__ = 'model_whitelist'
 
-    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4, nullable=False)
-    provider = Column(String(128), nullable=False)
-    model = Column(String(128), nullable=False)
+    provider = Column(String(128), primary_key=True, nullable=False)
+    model = Column(String(128), primary_key=True, nullable=False)
     model_type = Column(Enum(ModelType), nullable=False)
+
+class Provider(Base):
+    __tablename__ = 'providers'
+
+    provider = Column(String(128), primary_key=True, nullable=False)
+    settings = Column(JSON, nullable=False)
 
 # Create all tables in db
 Base.metadata.create_all(engine)

@@ -1,3 +1,2 @@
-This service requires Ollama running. To get started, set up Ollama for Docker following instructions here: https://hub.docker.com/r/ollama/ollama
-
+This service requires Ollama running. It is included as a service under docker compose. 
 For a quick development setup, run `docker compose build && docker compose up -d`
