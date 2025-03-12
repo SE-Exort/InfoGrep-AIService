@@ -107,8 +107,8 @@ class ProviderSetting(BaseModel):
     settings: dict
 
 class UpdateModelsParams(BaseModel):
-    embedding_models: List[Model]
-    chat_models: List[Model]
+    embedding: List[Model]
+    chat: List[Model]
 
 class UpdateProvidersParams(BaseModel):
     providers: List[ProviderSetting]
@@ -119,10 +119,10 @@ async def update_models(request: Request, sessionToken: str, models: UpdateModel
     if not user.is_admin: return {"error": True, "status": "USER_NOT_AUTHORIZED"}
     db.execute(text('TRUNCATE TABLE model_whitelist'))
 
-    for m in models.embedding_models:
+    for m in models.embedding:
         db.add(ModelWhitelist(provider=m.provider, model=m.model, model_type=ModelType.Embedding))
         download_model(m.provider, m.model)
-    for m in models.chat_models:
+    for m in models.chat:
         db.add(ModelWhitelist(provider=m.provider, model=m.model, model_type=ModelType.Chat))
         download_model(m.provider, m.model)
     db.commit()
