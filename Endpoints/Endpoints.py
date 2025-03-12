@@ -1,5 +1,6 @@
 from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.openapi.docs import get_swagger_ui_html
 
 from Endpoints.utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
@@ -151,3 +152,9 @@ async def update_models(request: Request, sessionToken: str, db: Session = Depen
         "data": db.query(Provider).all()
     }
 
+@router.get("/docs")
+async def custom_swagger_ui_html():
+    return get_swagger_ui_html(
+        openapi_url="/ai/openapi.json",
+        title="AI API Doc"
+    )
