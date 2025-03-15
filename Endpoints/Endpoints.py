@@ -2,11 +2,11 @@ from typing import List
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from Endpoints.utils import download_model
+from utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 from Parsers.threadpool import ParserThreadPool
-from Parsers import Parser
+from Parsers import PDFParser, Parser
 
 from LLMWrapers import Ollama, OpenAI
 from sqlalchemy.orm import Session
@@ -21,8 +21,10 @@ router = APIRouter(prefix='/api', tags=["api"])
 documentParserThreadPool = ParserThreadPool(10)
 
 supportedFileTypes = dict()
-for cls in Parser.Parser.__subclasses__():
-    supportedFileTypes.update({cls.fileType(): cls})
+# for cls in Parser.Parser.__subclasses__():
+#     print(cls.fileType(), cls)
+#     supportedFileTypes.update({cls.fileType(): cls})
+supportedFileTypes.update({'PDF': PDFParser.PDFParser})
 
 @router.post('/start_parsing')
 async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
@@ -31,14 +33,17 @@ async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetyp
     user = authentication_sdk.User(cookie, headers=request.headers)
     user_uuid = user.profile()['user_uuid']
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
-
-    parser: Parser
+    room = room_sdk.get_room(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     try:
-        parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie)
-    except:
+        print("getting parser", room, room['embedding_model'][0], supportedFileTypes[filetype])
+        parser: Parser.Parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie, chatroom_embedding_model=room['embedding_model'][0])
+        print('parser constructed', parser)
+        parser.startParsing()
+    except Exception as e:
+        print("error running parser", e)
         return 500
 
-    documentParserThreadPool.submit_task(parser)
+    # documentParserThreadPool.submit_task(parser)
     return 200
 
 @router.post('/cancel_parsing')

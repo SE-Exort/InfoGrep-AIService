@@ -6,7 +6,7 @@ import uvicorn
 import requests
 
 from Endpoints.Endpoints import router
-from Endpoints.utils import download_model
+from utils import download_model
 from InfoGrep_BackendSDK.service_endpoints import vectordb_host
 from InfoGrep_BackendSDK.middleware import TracingMiddleware, LoggingMiddleware
 from InfoGrep_BackendSDK.infogrep_logger.logger import Logger

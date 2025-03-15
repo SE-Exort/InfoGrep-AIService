@@ -6,7 +6,6 @@ class AIWrapper(ABC):
     def __init__(self, chatroom_uuid, cookie):
         self.ChatRoomUUID = chatroom_uuid
         self.Cookie = cookie
-        self.Collection = 'test'
         self.milvus_address = vectordb_host
 
     @abstractmethod
