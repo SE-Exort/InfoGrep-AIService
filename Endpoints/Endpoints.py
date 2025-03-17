@@ -87,8 +87,7 @@ async def get_system_response(request: Request, chatroom_uuid, message, cookie, 
     else:
         wrapper = OpenAI.OpenAI(chatroom_uuid=chatroom_uuid, cookie=cookie)
     model_response = wrapper.summarize(query=message, embedding_model=embedding_model, chat_model=chat_model)
-    think = re.findall(r"<think>.*<\/think>", model_response, re.DOTALL)
-    return {"error": False, "data": {"think": think[0] if len(think) > 0 else None, "response": re.sub(r"<think>.*<\/think>", "", model_response, flags=re.DOTALL)}}
+    return {"error": False, "data": model_response}
 
 @router.get('/models')
 async def get_models(request: Request, db: Session = Depends(get_db)):

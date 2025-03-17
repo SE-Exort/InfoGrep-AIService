@@ -1,4 +1,4 @@
-from LLMWrapers.AI import AIWrapper
+from LLMWrapers.AI import AIWrapper, Response
 
 import openai
 
@@ -8,7 +8,7 @@ class OpenAI(AIWrapper):
         openai.api_key = api_key
         return
 
-    def summarize(self, query: str, embedding_model: str, chat_model: str) -> str:
+    def summarize(self, query: str, embedding_model: str, chat_model: str) -> Response:
         #get Vectors to search with
         embparams = {
             'model': embedding_model,
@@ -32,7 +32,5 @@ class OpenAI(AIWrapper):
             'temperature': 0,
             'max_tokens': 2000,
         }
-        print(params)
         response = openai.chat.completions.create(**params)
-        print(response)
-        return response.choices[0].message.content
+        return Response(response=response.choices[0].message.content, thinking='', citations=[])

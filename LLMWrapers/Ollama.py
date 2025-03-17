@@ -1,4 +1,5 @@
-from LLMWrapers.AI import AIWrapper
+import re
+from LLMWrapers.AI import AIWrapper, Citation, Response
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 import os
 
@@ -11,10 +12,8 @@ from langchain_ollama.llms import OllamaLLM
 from utils import convert_collection_name
 
 class Ollama(AIWrapper):
-    def summarize(self, query: str, embedding_model: str, chat_model: str) -> str:
+    def summarize(self, query: str, embedding_model: str, chat_model: str) -> Response:
         embeddings = OllamaEmbeddings(model=embedding_model)
-        print("Using collection", convert_collection_name(embedding_model), "for query ", query, "and chatroom", self.ChatRoomUUID)
-        # Find the closest few documents
         vector_store = Milvus(
             collection_name=convert_collection_name(embedding_model),
             embedding_function=embeddings,
@@ -24,8 +23,9 @@ class Ollama(AIWrapper):
                 "password": os.environ.get("INFOGREP_MILVUS_PASSWORD")
             }
         )
+        # Find the closest few documents
         docs = vector_store.similarity_search(query, k=3) # TODO: filter by chatroom uuid
-        print("similarity search by vector: ", docs)
+        citations = [Citation(page=doc.metadata['page'], textContent=doc.page_content, file=doc.metadata['source']) for doc in docs]
 
         template = ChatPromptTemplate.from_messages([
                 ("system", "You are a helpful assistant to an enterprise user. Answer the query in a polite and informative tone."),
@@ -37,9 +37,9 @@ class Ollama(AIWrapper):
             ])
 
         model = OllamaLLM(model=chat_model, base_url=ollama_service_host)
-
         chain = template | model
-
         ai_msg = chain.invoke({"user_input": query})
 
-        return ai_msg
+        thoughts = re.findall(r"<think>.*<\/think>", ai_msg, re.DOTALL)
+        response_without_thoughts = re.sub(r"<think>.*<\/think>", "", ai_msg, flags=re.DOTALL)
+        return Response(response=response_without_thoughts, thinking=thoughts[0] if len(thoughts) > 0 else None, citations=citations)
