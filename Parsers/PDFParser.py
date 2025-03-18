@@ -1,12 +1,13 @@
 from langchain_ollama import OllamaEmbeddings
 from Parsers.Parser import Parser
 
-import uuid
+import uuid, os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_community.embeddings import HuggingFaceBgeEmbeddings
 from langchain_community.vectorstores import Milvus
 
 from utils import convert_collection_name
+from InfoGrep_BackendSDK.service_endpoints import vectordb_host
 
 class PDFParser(Parser):
     def startParsing(self):
@@ -31,7 +32,15 @@ class PDFParser(Parser):
         embeddings = OllamaEmbeddings(model=self.EmbeddingModel)
 
         # put into milvus collection corresponding to the chatroom embedding model
-        vector_store = Milvus(embedding_function=embeddings, collection_name=convert_collection_name(self.EmbeddingModel), auto_id=True)
+        vector_store = Milvus(
+            embedding_function=embeddings, 
+            collection_name=convert_collection_name(self.EmbeddingModel), 
+            auto_id=True,
+            connection_args={
+                "address": vectordb_host,
+                "user": os.environ.get("INFOGREP_MILVUS_USER"),
+                "password": os.environ.get("INFOGREP_MILVUS_PASSWORD")
+            })
         added_ids = vector_store.add_documents(pages)
         print(added_ids)
         # TODO: remove the file that we created
