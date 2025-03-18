@@ -1,6 +1,6 @@
 import re
 from typing import List
-from Endpoints.Endpoints import MessageHistory
+from Endpoints import MessageHistory
 from LLMWrapers.AI import AIWrapper, Citation, Response
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 import os

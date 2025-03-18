@@ -5,7 +5,7 @@ from starlette.middleware.cors import CORSMiddleware
 import uvicorn
 import requests
 
-from Endpoints.Endpoints import router
+from Endpoints import router
 from utils import download_model
 from InfoGrep_BackendSDK.service_endpoints import vectordb_host
 from InfoGrep_BackendSDK.middleware import TracingMiddleware, LoggingMiddleware
