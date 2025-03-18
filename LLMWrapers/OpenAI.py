@@ -1,4 +1,5 @@
-from LLMWrapers.AI import AIWrapper, Response
+from typing import List
+from LLMWrapers.AI import AIWrapper, MessageHistory, Response
 
 import openai
 
@@ -8,7 +9,7 @@ class OpenAI(AIWrapper):
         openai.api_key = api_key
         return
 
-    def summarize(self, query: str, embedding_model: str, chat_model: str) -> Response:
+    def summarize(self, history: List[MessageHistory], query: str, embedding_model: str, chat_model: str) -> Response:
         #get Vectors to search with
         embparams = {
             'model': embedding_model,

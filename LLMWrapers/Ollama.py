@@ -1,4 +1,6 @@
 import re
+from typing import List
+from Endpoints.Endpoints import MessageHistory
 from LLMWrapers.AI import AIWrapper, Citation, Response
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 import os
@@ -12,7 +14,7 @@ from langchain_ollama.llms import OllamaLLM
 from utils import convert_collection_name
 
 class Ollama(AIWrapper):
-    def summarize(self, query: str, embedding_model: str, chat_model: str) -> Response:
+    def summarize(self, history: List[MessageHistory], query: str, embedding_model: str, chat_model: str) -> Response:
         embeddings = OllamaEmbeddings(model=embedding_model)
         vector_store = Milvus(
             collection_name=convert_collection_name(embedding_model),
@@ -27,14 +29,15 @@ class Ollama(AIWrapper):
         docs = vector_store.similarity_search(query, k=3) # TODO: filter by chatroom uuid
         citations = [Citation(page=doc.metadata['page'], textContent=doc.page_content, file=doc.metadata['source']) for doc in docs]
 
-        template = ChatPromptTemplate.from_messages([
-                ("system", "You are a helpful assistant to an enterprise user. Answer the query in a polite and informative tone."),
-                ("human", "{user_input}"),
-            ] if len(docs) == 0 else [
-                ("system", "You are a helpful assistant to an enterprise user. Answer the query using the provided information."),
-                ("system", "" + docs[0].page_content),
-                ("human", "{user_input}"),
-            ])
+        messages = [
+                ("system", "You are a helpful assistant to an enterprise user. Answer the user question in a polite and helpful tone."),
+                *([("system", "Only use the provided information in your response.")] if len(docs) else []),
+                *[("system", d.page_content) for d in docs],
+                *[("human" if h.is_user else "system", h.message) for h in history],
+                ("human", "{user_input}")
+            ]
+        template = ChatPromptTemplate.from_messages(messages)
+        print(messages)
 
         model = OllamaLLM(model=chat_model, base_url=ollama_service_host)
         chain = template | model

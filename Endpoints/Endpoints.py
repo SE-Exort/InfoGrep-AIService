@@ -1,7 +1,8 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, HTTPException, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 
+from LLMWrapers.AI import MessageHistory
 from utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
@@ -35,8 +36,8 @@ async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetyp
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     try:
-        print("getting parser", room, room['embedding_model'][0], supportedFileTypes[filetype])
-        parser: Parser.Parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie, chatroom_embedding_model=room['embedding_model'][0])
+        print("getting parser", room, room['embedding_model'], supportedFileTypes[filetype])
+        parser: Parser.Parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie, chatroom_embedding_model=room['embedding_model'])
         print('parser constructed', parser)
         parser.startParsing()
     except Exception as e:
@@ -76,17 +77,27 @@ def get_parsing_status(request: Request, chatroom_uuid, file_uuid, cookie):
 async def get_file_types():
     return list(supportedFileTypes.keys())
 
-@router.get('/system_response')
-async def get_system_response(request: Request, chatroom_uuid, message, cookie, provider, embedding_model, chat_model, db: Session = Depends(get_db)):
-    exists = db.query(db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat, ModelWhitelist.provider==provider, ModelWhitelist.model==chat_model).exists()).scalar()
+class SystemResponseParams(BaseModel):
+    chatroom_uuid: str
+    history: List[MessageHistory]
+    message: str
+    sessionToken: str
+    provider: str
+    embedding_model: str
+    chat_model: str
+
+@router.post('/system_response')
+async def post_system_response(request: Request, p: SystemResponseParams = Body(), db: Session = Depends(get_db)):
+    exists = db.query(db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat, ModelWhitelist.provider==p.provider, ModelWhitelist.model==p.chat_model).exists()).scalar()
     if not exists: return {"error": True, "status": "MODEL_NOT_ALLOWED"}
 
     wrapper = None
-    if provider == "ollama":
-        wrapper = Ollama.Ollama(chatroom_uuid=chatroom_uuid, cookie=cookie)
+    if p.provider == "ollama":
+        wrapper = Ollama.Ollama(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken)
     else:
-        wrapper = OpenAI.OpenAI(chatroom_uuid=chatroom_uuid, cookie=cookie)
-    model_response = wrapper.summarize(query=message, embedding_model=embedding_model, chat_model=chat_model)
+        wrapper = OpenAI.OpenAI(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken)
+    model_response = wrapper.summarize(history=p.history, query=p.message, embedding_model=p.embedding_model, chat_model=p.chat_model)
+
     return {"error": False, "data": model_response}
 
 @router.get('/models')

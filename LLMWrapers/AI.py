@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List
+
+from pydantic import BaseModel
 from InfoGrep_BackendSDK.service_endpoints import vectordb_host
 
 class Citation:
@@ -14,6 +16,10 @@ class Response:
         self.thinking = thinking
         self.citations = citations
 
+class MessageHistory(BaseModel):
+    message: str
+    is_user: bool
+
 class AIWrapper(ABC):
     def __init__(self, chatroom_uuid, cookie):
         self.ChatRoomUUID = chatroom_uuid
@@ -21,5 +27,5 @@ class AIWrapper(ABC):
         self.milvus_address = vectordb_host
 
     @abstractmethod
-    def summarize(self, embedding_model: str, chat_model: str) -> Response:
+    def summarize(self, history: List[MessageHistory], historyembedding_model: str, chat_model: str) -> Response:
         pass
