@@ -20,7 +20,7 @@ class MessageHistory(BaseModel):
     message: str
     is_user: bool
 
-class AIWrapper(ABC):
+class Provider(ABC):
     def __init__(self, chatroom_uuid, cookie):
         self.ChatRoomUUID = chatroom_uuid
         self.Cookie = cookie

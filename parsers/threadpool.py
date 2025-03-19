@@ -1,5 +1,5 @@
 import concurrent.futures
-from Parsers.Parser import Parser
+from parsers.Parser import Parser
 
 
 class ParserThreadPool:

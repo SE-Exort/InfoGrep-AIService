@@ -1,6 +1,6 @@
 from os import remove
 from langchain_ollama import OllamaEmbeddings
-from Parsers.Parser import Parser
+from parsers.Parser import Parser
 
 import uuid, os
 from langchain_community.document_loaders import PyPDFLoader

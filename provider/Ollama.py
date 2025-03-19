@@ -1,11 +1,10 @@
 import re
 from typing import List
 from Endpoints import MessageHistory
-from LLMWrapers.AI import AIWrapper, Citation, Response
+from provider.Provider import Provider, Citation, Response
 from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
 import os
 
-from langchain_huggingface import HuggingFaceEmbeddings
 from langchain_ollama import OllamaEmbeddings
 from langchain_community.vectorstores import Milvus
 from langchain_core.prompts import ChatPromptTemplate
@@ -13,7 +12,7 @@ from langchain_ollama.llms import OllamaLLM
 
 from utils import convert_collection_name
 
-class Ollama(AIWrapper):
+class Ollama(Provider):
     def summarize(self, history: List[MessageHistory], query: str, embedding_model: str, chat_model: str) -> Response:
         embeddings = OllamaEmbeddings(model=embedding_model)
         vector_store = Milvus(

@@ -1,10 +1,9 @@
 from typing import List
-from LLMWrapers.AI import AIWrapper, MessageHistory, Response
+from provider.Provider import Provider, MessageHistory, Response
 
 import openai
 
-
-class OpenAI(AIWrapper):
+class OpenAI(Provider):
     def set_openAIkey(self, api_key):
         openai.api_key = api_key
         return

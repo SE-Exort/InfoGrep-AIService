@@ -1,4 +1,4 @@
-from Parsers.Parser import Parser
+from parsers.Parser import Parser
 import re
 
 class TXTParser(Parser):

@@ -1,22 +1,20 @@
 from typing import List
-from fastapi import APIRouter, Body, Depends, HTTPException, Request
+from fastapi import APIRouter, Body, Depends, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from LLMWrapers.AI import MessageHistory
+from provider.Provider import MessageHistory
 from utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
-from InfoGrep_BackendSDK.service_endpoints import ollama_service_host
-from Parsers.threadpool import ParserThreadPool
-from Parsers import PDFParser, Parser
+from parsers.threadpool import ParserThreadPool
+from parsers import PDFParser, Parser
 
-from LLMWrapers import Ollama, OpenAI
+from provider import Ollama, OpenAI
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
 
 from db import ModelType, ModelWhitelist, Provider, get_db
 from sqlalchemy.sql import text
-import re
 
 router = APIRouter(prefix='/api', tags=["api"])
 documentParserThreadPool = ParserThreadPool(10)
