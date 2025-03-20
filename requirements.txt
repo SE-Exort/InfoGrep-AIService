@@ -1,6 +1,5 @@
 uvicorn
 fastapi
-openai
 requests
 pypdf
 python-magic
@@ -17,3 +16,5 @@ langchain-ollama
 sentence-transformers
 sqlalchemy
 psycopg2-binary
+atlassian-python-api
+langchain_openai

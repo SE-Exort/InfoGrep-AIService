@@ -1,14 +1,19 @@
+from os import environ
 from typing import List
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 
-from provider.Provider import MessageHistory
+from provider.Chat import MessageHistory, chat
+from provider.Cloudflare import Cloudflare
+from provider.Milvus import vector_search
+from provider.Ollama import Ollama
+from provider.OpenAI import OpenAI
 from utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
 from parsers.threadpool import ParserThreadPool
 from parsers import PDFParser, Parser
 
-from provider import Ollama, OpenAI
+
 from sqlalchemy.orm import Session
 
 from pydantic import BaseModel
@@ -80,23 +85,36 @@ class SystemResponseParams(BaseModel):
     history: List[MessageHistory]
     message: str
     sessionToken: str
-    provider: str
-    embedding_model: str
-    chat_model: str
 
+    embedding_model: str
+    embedding_provider: str
+    
+    chat_model: str
+    chat_provider: str
+
+ollama, openai, cf = Ollama(), OpenAI(), Cloudflare()
 @router.post('/system_response')
 async def post_system_response(request: Request, p: SystemResponseParams = Body(), db: Session = Depends(get_db)):
-    exists = db.query(db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat, ModelWhitelist.provider==p.provider, ModelWhitelist.model==p.chat_model).exists()).scalar()
+    exists = db.query(db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat,
+                                                      ModelWhitelist.provider==p.chat_provider,
+                                                      ModelWhitelist.model==p.chat_model
+                                                      ).exists()).scalar()
     if not exists: return {"error": True, "status": "MODEL_NOT_ALLOWED"}
 
-    wrapper = None
-    if p.provider == "ollama":
-        wrapper = Ollama.Ollama(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken)
-    else:
-        wrapper = OpenAI.OpenAI(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken)
-    model_response = wrapper.summarize(history=p.history, query=p.message, embedding_model=p.embedding_model, chat_model=p.chat_model)
+    # assume embedding provider is ollama + milvus
+    citations = vector_search(p.message, p.embedding_model, ollama.embedding(p.embedding_model), 3)
 
-    return {"error": False, "data": model_response}
+    # determine chat provider
+    chat_llm = None
+    if p.chat_provider == "ollama":
+        chat_llm = ollama.llm(p.chat_model)
+    elif p.chat_provider == "cloudflare":
+        chat_llm = cf.llm(p.chat_model, db)
+    elif p.chat_provider == "openai":
+        chat_llm = openai.llm(p.chat_model, db)
+    print("SERVICING RESPONSE ------------------------------")
+    print(p, chat_llm)
+    return {"error": False, "data": chat(citations=citations, history=p.history, query=p.message, chat_llm=chat_llm)}
 
 @router.get('/models')
 async def get_models(request: Request, db: Session = Depends(get_db)):

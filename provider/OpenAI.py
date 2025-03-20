@@ -1,36 +1,19 @@
-from typing import List
-from provider.Provider import Provider, MessageHistory, Response
-
-import openai
+from langchain_openai import ChatOpenAI, OpenAIEmbeddings
+from provider.Provider import Provider
+from sqlalchemy.orm import Session
 
 class OpenAI(Provider):
-    def set_openAIkey(self, api_key):
-        openai.api_key = api_key
-        return
+    def embedding(self, embedding_model: str, key: str):
+        return OpenAIEmbeddings(model=embedding_model, api_key=key)
 
-    def summarize(self, history: List[MessageHistory], query: str, embedding_model: str, chat_model: str) -> Response:
-        #get Vectors to search with
-        embparams = {
-            'model': embedding_model,
-            'input': query,
-        }
-
-        response = openai.embeddings.create(**embparams)
-        vectors = self.getVectors(text=response.data[0].embedding).json()['payload']
-
-        #generate AI response
-        sys_prompt = "You will be given a list of text and a query string, your job is to first filter out the most relevant result from the list of input text that answers or relates to the query string, and then summarize the relevant text to answer the query string's question."
-        user_query = f"input texts are: {vectors}. the query is {query}"
-        messages = [
-            {"role": "system", "content": sys_prompt},
-            {"role": "user", "content": user_query}
-        ]
-
-        params = {
-            'model': chat_model,
-            'messages': messages,
-            'temperature': 0,
-            'max_tokens': 2000,
-        }
-        response = openai.chat.completions.create(**params)
-        return Response(response=response.choices[0].message.content, thinking='', citations=[])
+    def llm(self, chat_model: str, db: Session):
+        p = db.query(Provider).where(Provider.provider=='openai').first()
+        s = p.settings
+        return ChatOpenAI(
+            model=chat_model,
+            temperature=0,
+            max_tokens=None,
+            timeout=None,
+            max_retries=2,
+            api_key=s['key'],
+        )
