@@ -3,8 +3,10 @@ from provider.Provider import Provider
 from sqlalchemy.orm import Session
 
 class OpenAI(Provider):
-    def embedding(self, embedding_model: str, key: str):
-        return OpenAIEmbeddings(model=embedding_model, api_key=key)
+    def embedding(self, embedding_model: str, db: Session):
+        p = db.query(Provider).where(Provider.provider=='openai').first()
+        s = p.settings
+        return OpenAIEmbeddings(model=embedding_model, api_key=s['key'])
 
     def llm(self, chat_model: str, db: Session):
         p = db.query(Provider).where(Provider.provider=='openai').first()

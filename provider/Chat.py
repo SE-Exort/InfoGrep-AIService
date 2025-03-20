@@ -24,14 +24,11 @@ def chat(citations: List[Citation], history: List[MessageHistory], query: str, c
             ("human", "{user_input}")
         ]
     template = ChatPromptTemplate.from_messages(messages)
-    print("MESSAGES -------------------------------------------")
-    print(messages)
+    print("Chat prompt and history", messages)
 
     chain = template | chat_llm
     ai_msg = chain.invoke({"user_input": query})
-
-    print("AI RESPONSE -------------------------------------------")
-    print(ai_msg)
+    print("AI Response: ", ai_msg)
 
     thoughts = re.findall(r"<think>.*<\/think>", ai_msg, re.DOTALL)
     response_without_thoughts = re.sub(r"<think>.*<\/think>", "", ai_msg, flags=re.DOTALL).replace('<think>', '').replace('</think>', '').strip()

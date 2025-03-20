@@ -112,8 +112,7 @@ async def post_system_response(request: Request, p: SystemResponseParams = Body(
         chat_llm = cf.llm(p.chat_model, db)
     elif p.chat_provider == "openai":
         chat_llm = openai.llm(p.chat_model, db)
-    print("SERVICING RESPONSE ------------------------------")
-    print(p, chat_llm)
+    print("Using chat LLM ", chat_llm, "for request", p)
     return {"error": False, "data": chat(citations=citations, history=p.history, query=p.message, chat_llm=chat_llm)}
 
 @router.get('/models')

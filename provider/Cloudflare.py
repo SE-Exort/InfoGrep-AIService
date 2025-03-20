@@ -5,7 +5,7 @@ from db import Provider
 from provider.Provider import Provider as BaseProvider
 
 class Cloudflare(BaseProvider):
-    def embedding(self, embedding_model: str):
+    def embedding(self, embedding_model: str, db: Session):
         pass
 
     def llm(self, chat_model: str, db: Session):
