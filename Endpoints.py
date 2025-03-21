@@ -89,14 +89,16 @@ def post_system_response(request: Request, p: SystemResponseParams = Body(), db:
 
     # determine chat provider
     chat_llm = None
+    args = dict()
     if p.chat_provider == "ollama":
         chat_llm = ollama.llm(p.chat_model)
     elif p.chat_provider == "cloudflare":
         chat_llm = cf.llm(p.chat_model, db)
+        args.update({'max_tokens': 1000})
     elif p.chat_provider == "openai":
         chat_llm = openai.llm(p.chat_model, db)
     print("Using chat LLM ", chat_llm, "for request", p)
-    return {"error": False, "data": chat(citations=citations, history=p.history, chat_llm=chat_llm)}
+    return {"error": False, "data": chat(citations=citations, history=p.history, chat_llm=chat_llm, args=args)}
 
 @router.get('/models')
 def get_models(request: Request, db: Session = Depends(get_db)):

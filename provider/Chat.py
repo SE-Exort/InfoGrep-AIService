@@ -17,17 +17,16 @@ class MessageHistory(BaseModel):
     message: str
     is_user: bool
 
-def chat(citations: List[Citation], history: List[MessageHistory], chat_llm: BaseLanguageModel) -> Response:
+def chat(citations: List[Citation], history: List[MessageHistory], args: dict, chat_llm: BaseLanguageModel) -> Response:
     messages = [
             ("system", "You are a helpful assistant to an enterprise user. Answer the user question in a polite and helpful tone."),
             *([("system", "Only use the provided information in your response.")] if len(citations) else []),
             *[("system", c.textContent) for c in citations],
             *[("human" if h.is_user else "system", h.message) for h in history],
         ]
-    template = ChatPromptTemplate.from_messages(messages)
     print("Chat prompt and history", messages)
 
-    ai_msg = chat_llm.invoke(messages, {}, max_tokens=1000)
+    ai_msg = chat_llm.invoke(messages, {}, **args)
     print("AI Response: ", ai_msg)
 
     thoughts = re.findall(r"<think>.*<\/think>", ai_msg, re.DOTALL)
