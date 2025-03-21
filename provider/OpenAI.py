@@ -6,7 +6,7 @@ class OpenAI(Provider):
     def embedding(self, embedding_model: str, db: Session):
         p = db.query(Provider).where(Provider.provider=='openai').first()
         s = p.settings
-        return OpenAIEmbeddings(model=embedding_model, api_key=s['key'])
+        return OpenAIEmbeddings(model=embedding_model, api_key=s['api_key'])
 
     def llm(self, chat_model: str, db: Session):
         p = db.query(Provider).where(Provider.provider=='openai').first()
@@ -17,5 +17,5 @@ class OpenAI(Provider):
             max_tokens=None,
             timeout=None,
             max_retries=2,
-            api_key=s['key'],
+            api_key=s['api_key'],
         )
