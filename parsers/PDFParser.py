@@ -9,6 +9,15 @@ from langchain_community.vectorstores import Milvus
 from utils import convert_collection_name
 from InfoGrep_BackendSDK.service_endpoints import vectordb_host
 
+# Only keep standard metadata otherwise insertion may fail
+METADATA_WHITELIST = ['page', 'source', 'chatroom']
+def clean_metadata(metadata_items):
+    cleaned_metadata = dict()
+    for k,v in metadata_items:
+        if k in METADATA_WHITELIST:
+            cleaned_metadata.update({convert_collection_name(k): v})
+    return cleaned_metadata
+
 class PDFParser(Parser):
     def startParsing(self):
         file = self.getFile()
@@ -21,11 +30,8 @@ class PDFParser(Parser):
         pages = []
         for page in loader.load():
             # Metadata names are probably not compatible with Milvus naming requirements, clean them beforehand
-            cleaned_metadata = dict()
-            for k,v in page.metadata.items():
-                cleaned_metadata.update({convert_collection_name(k): v})
-            page.metadata = cleaned_metadata
             page.metadata["chatroom"] = self.ChatRoomUUID
+            page.metadata = clean_metadata(page.metadata.items())
             pages.append(page)
 
         embeddings = OllamaEmbeddings(model=self.EmbeddingModel)
