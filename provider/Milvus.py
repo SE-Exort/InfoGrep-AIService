@@ -32,5 +32,4 @@ def vector_search(query: str, chatroom_uuid: str, embedding_model: str, k: int) 
     return citations
 
 def remove_embeddings(chatroom_uuid: str, embedding_model: str, file_uuid: str):
-    print(f'chatroom == "{chatroom_uuid}" && source == "{file_uuid}"')
     get_vector_store(embedding_model).delete(expr=f'chatroom == "{chatroom_uuid}" && source == "{file_uuid}"')

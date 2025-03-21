@@ -97,7 +97,6 @@ def post_system_response(request: Request, p: SystemResponseParams = Body(), db:
         args.update({'max_tokens': 1000})
     elif p.chat_provider == "openai":
         chat_llm = openai.llm(p.chat_model, db)
-    print("Using chat LLM ", chat_llm, "for request", p)
     return {"error": False, "data": chat(citations=citations, history=p.history, chat_llm=chat_llm, args=args)}
 
 @router.get('/models')
