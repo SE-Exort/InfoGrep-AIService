@@ -10,9 +10,7 @@ from provider.Ollama import Ollama
 from provider.OpenAI import OpenAI
 from utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
-from parsers.threadpool import ParserThreadPool
 from parsers import PDFParser, Parser
-
 
 from sqlalchemy.orm import Session
 
@@ -22,7 +20,6 @@ from db import ModelType, ModelWhitelist, Provider, get_db
 from sqlalchemy.sql import text
 
 router = APIRouter(prefix='/api', tags=["api"])
-documentParserThreadPool = ParserThreadPool(10)
 
 supportedFileTypes = dict()
 # for cls in Parser.Parser.__subclasses__():
@@ -32,20 +29,21 @@ supportedFileTypes.update({'PDF': PDFParser.PDFParser})
 
 ollama, openai, cf = Ollama(), OpenAI(), Cloudflare()
 
-@router.post('/start_parsing')
-async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
+@router.post('/parse_file')
+def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
     authentication_sdk.User(cookie, headers=request.headers)
-
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
+
+    if filetype not in supportedFileTypes:
+        raise Exception(status_code=400, detail=f"Parsing file type {filetype} is not supported")
+
     try:
         parser: Parser.Parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie, chatroom_embedding_model=room['embedding_model'])
         parser.startParsing()
     except Exception as e:
         print("error running parser", e)
         return 500
-
-    # documentParserThreadPool.submit_task(parser)
     return 200
 
 class RemoveEmbeddingParams(BaseModel):
@@ -54,40 +52,15 @@ class RemoveEmbeddingParams(BaseModel):
     sessionToken: str
 
 @router.post('/remove_embedding')
-async def post_remove_embedding(request: Request, p: RemoveEmbeddingParams = Body()):
+def post_remove_embedding(request: Request, p: RemoveEmbeddingParams = Body()):
     authentication_sdk.User(p.sessionToken, headers=request.headers)
-
     room_sdk.get_userInRoom(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken, headers=request.headers)
 
     remove_embeddings(p.chatroom_uuid, room['embedding_model'], ollama.embedding(room['embedding_model']), p.file_uuid)
 
-@router.post('/cancel_parsing')
-async def post_cancel_parsing(request: Request, chatroom_uuid, file_uuid, cookie):
-    #authenticate user
-    #user must have a valid session cookie
-    authentication_sdk.User(cookie, headers=request.headers)
-    room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
-
-    taskkey = documentParserThreadPool.create_taskkey(chatroom_uuid=chatroom_uuid,file_uuid=file_uuid)
-
-    documentParserThreadPool.cancel_task(taskkey=taskkey)
-    
-    return 200
-
-@router.get('/parsing_status')
-async def get_parsing_status(request: Request, chatroom_uuid, file_uuid, cookie):
-    #authenticate user
-    #user must have a valid session cookie
-    authentication_sdk.User(cookie, headers=request.headers)
-    room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
-    
-    taskkey = documentParserThreadPool.create_taskkey(chatroom_uuid=chatroom_uuid,file_uuid=file_uuid)
-    documentParserThreadPool.get_task_status(taskkey=taskkey)
-    return 200
-
 @router.get('/file_types')
-async def get_file_types():
+def get_file_types():
     return list(supportedFileTypes.keys())
 
 class SystemResponseParams(BaseModel):
@@ -104,7 +77,7 @@ class SystemResponseParams(BaseModel):
 
 
 @router.post('/system_response')
-async def post_system_response(request: Request, p: SystemResponseParams = Body(), db: Session = Depends(get_db)):
+def post_system_response(request: Request, p: SystemResponseParams = Body(), db: Session = Depends(get_db)):
     authentication_sdk.User(p.sessionToken, headers=request.headers)
     exists = db.query(db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat,
                                                       ModelWhitelist.provider==p.chat_provider,
@@ -113,7 +86,7 @@ async def post_system_response(request: Request, p: SystemResponseParams = Body(
     if not exists: return {"error": True, "status": "MODEL_NOT_ALLOWED"}
 
     # assume embedding provider is ollama + milvus
-    citations = vector_search(p.message, p.embedding_model, ollama.embedding(p.embedding_model), 3)
+    citations = vector_search(p.message, p.chatroom_uuid, p.embedding_model, ollama.embedding(p.embedding_model), 3)
 
     # determine chat provider
     chat_llm = None
@@ -127,7 +100,7 @@ async def post_system_response(request: Request, p: SystemResponseParams = Body(
     return {"error": False, "data": chat(citations=citations, history=p.history, query=p.message, chat_llm=chat_llm)}
 
 @router.get('/models')
-async def get_models(request: Request, db: Session = Depends(get_db)):
+def get_models(request: Request, db: Session = Depends(get_db)):
     embedding_models = db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Embedding).all()
     chat_models = db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat).all()
     
@@ -155,7 +128,7 @@ class UpdateProvidersParams(BaseModel):
     providers: List[ProviderSetting]
 
 @router.post('/models')
-async def update_models(request: Request, sessionToken: str, models: UpdateModelsParams, db: Session = Depends(get_db)):
+def update_models(request: Request, sessionToken: str, models: UpdateModelsParams, db: Session = Depends(get_db)):
     user = authentication_sdk.User(sessionToken, {})
     if not user.is_admin: return {"error": True, "status": "USER_NOT_AUTHORIZED"}
     db.execute(text('TRUNCATE TABLE model_whitelist'))
@@ -171,7 +144,7 @@ async def update_models(request: Request, sessionToken: str, models: UpdateModel
     return {"error": False, "status": "MODEL_WHITELIST_UPDATED"}
 
 @router.post('/providers')
-async def update_models(request: Request, sessionToken: str, providers: UpdateProvidersParams, db: Session = Depends(get_db)):
+def update_models(request: Request, sessionToken: str, providers: UpdateProvidersParams, db: Session = Depends(get_db)):
     user = authentication_sdk.User(sessionToken, {})
     if not user.is_admin: return {"error": True, "status": "USER_NOT_AUTHORIZED"}
     db.execute(text('TRUNCATE TABLE providers'))
@@ -184,7 +157,7 @@ async def update_models(request: Request, sessionToken: str, providers: UpdatePr
 
 # May return sensitive info like API keys, so admin only
 @router.get('/providers')
-async def update_models(request: Request, sessionToken: str, db: Session = Depends(get_db)):
+def update_models(request: Request, sessionToken: str, db: Session = Depends(get_db)):
     user = authentication_sdk.User(sessionToken, {})
     if not user.is_admin: return {"error": True, "status": "USER_NOT_AUTHORIZED"}
 

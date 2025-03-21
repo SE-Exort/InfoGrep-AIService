@@ -3,7 +3,6 @@ from abc import ABC, abstractmethod
 from InfoGrep_BackendSDK import fms_api
 
 class Parser(ABC):
-
     def __init__(self, chatroom_uuid: str, file_uuid: str, cookie: str, chatroom_embedding_model: str):
         self.ChatRoomUUID = chatroom_uuid
         self.EmbeddingModel = chatroom_embedding_model
@@ -16,14 +15,6 @@ class Parser(ABC):
 
     @abstractmethod
     def startParsing(self):
-        pass
-
-    @abstractmethod
-    def cancelParsing(self):
-        pass
-
-    @abstractmethod
-    def getParsingStatus(self):
         pass
     
     @abstractmethod
