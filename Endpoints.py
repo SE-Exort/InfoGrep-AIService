@@ -5,7 +5,7 @@ from fastapi.openapi.docs import get_swagger_ui_html
 
 from provider.Chat import MessageHistory, chat
 from provider.Cloudflare import Cloudflare
-from provider.Milvus import vector_search
+from provider.Milvus import remove_embeddings, vector_search
 from provider.Ollama import Ollama
 from provider.OpenAI import OpenAI
 from utils import download_model
@@ -30,18 +30,16 @@ supportedFileTypes = dict()
 #     supportedFileTypes.update({cls.fileType(): cls})
 supportedFileTypes.update({'PDF': PDFParser.PDFParser})
 
+ollama, openai, cf = Ollama(), OpenAI(), Cloudflare()
+
 @router.post('/start_parsing')
 async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
-    #authenticate user
-    #user must have a valid session cookie
-    user = authentication_sdk.User(cookie, headers=request.headers)
-    user_uuid = user.profile()['user_uuid']
+    authentication_sdk.User(cookie, headers=request.headers)
+
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     try:
-        print("getting parser", room, room['embedding_model'], supportedFileTypes[filetype])
         parser: Parser.Parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie, chatroom_embedding_model=room['embedding_model'])
-        print('parser constructed', parser)
         parser.startParsing()
     except Exception as e:
         print("error running parser", e)
@@ -50,12 +48,25 @@ async def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetyp
     # documentParserThreadPool.submit_task(parser)
     return 200
 
+class RemoveEmbeddingParams(BaseModel):
+    chatroom_uuid: str
+    file_uuid: str
+    sessionToken: str
+
+@router.post('/remove_embedding')
+async def post_remove_embedding(request: Request, p: RemoveEmbeddingParams = Body()):
+    authentication_sdk.User(p.sessionToken, headers=request.headers)
+
+    room_sdk.get_userInRoom(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken, headers=request.headers)
+    room = room_sdk.get_room(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken, headers=request.headers)
+
+    remove_embeddings(p.chatroom_uuid, room['embedding_model'], ollama.embedding(room['embedding_model']), p.file_uuid)
+
 @router.post('/cancel_parsing')
-def post_cancel_parsing(request: Request, chatroom_uuid, file_uuid, cookie):
+async def post_cancel_parsing(request: Request, chatroom_uuid, file_uuid, cookie):
     #authenticate user
     #user must have a valid session cookie
-    user = authentication_sdk.User(cookie, headers=request.headers)
-    user_uuid = user.profile()['user_uuid']
+    authentication_sdk.User(cookie, headers=request.headers)
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
 
     taskkey = documentParserThreadPool.create_taskkey(chatroom_uuid=chatroom_uuid,file_uuid=file_uuid)
@@ -65,11 +76,10 @@ def post_cancel_parsing(request: Request, chatroom_uuid, file_uuid, cookie):
     return 200
 
 @router.get('/parsing_status')
-def get_parsing_status(request: Request, chatroom_uuid, file_uuid, cookie):
+async def get_parsing_status(request: Request, chatroom_uuid, file_uuid, cookie):
     #authenticate user
     #user must have a valid session cookie
-    user = authentication_sdk.User(cookie, headers=request.headers)
-    user_uuid = user.profile()['user_uuid']
+    authentication_sdk.User(cookie, headers=request.headers)
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     
     taskkey = documentParserThreadPool.create_taskkey(chatroom_uuid=chatroom_uuid,file_uuid=file_uuid)
@@ -92,9 +102,10 @@ class SystemResponseParams(BaseModel):
     chat_model: str
     chat_provider: str
 
-ollama, openai, cf = Ollama(), OpenAI(), Cloudflare()
+
 @router.post('/system_response')
 async def post_system_response(request: Request, p: SystemResponseParams = Body(), db: Session = Depends(get_db)):
+    authentication_sdk.User(p.sessionToken, headers=request.headers)
     exists = db.query(db.query(ModelWhitelist).filter(ModelWhitelist.model_type == ModelType.Chat,
                                                       ModelWhitelist.provider==p.chat_provider,
                                                       ModelWhitelist.model==p.chat_model

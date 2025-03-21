@@ -21,7 +21,7 @@ def clean_metadata(metadata_items):
 class PDFParser(Parser):
     def startParsing(self):
         file = self.getFile()
-        tempFileName = str(uuid.uuid4()) + ".pdf"
+        tempFileName = self.FileUUID
         with open(tempFileName, "wb") as files:
             files.write(file.content)
         
