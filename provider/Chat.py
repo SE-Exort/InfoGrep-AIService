@@ -4,7 +4,9 @@ from typing import List
 from pydantic import BaseModel
 from langchain_core.prompts import ChatPromptTemplate
 from provider.Milvus import Citation
-
+from langchain_core.language_models.base import (
+    BaseLanguageModel,
+)
 class Response:
     def __init__(self, response: str, thinking: str, citations: List[Citation]):
         self.response = response
@@ -15,19 +17,17 @@ class MessageHistory(BaseModel):
     message: str
     is_user: bool
 
-def chat(citations: List[Citation], history: List[MessageHistory], query: str, chat_llm) -> Response:
+def chat(citations: List[Citation], history: List[MessageHistory], chat_llm: BaseLanguageModel) -> Response:
     messages = [
             ("system", "You are a helpful assistant to an enterprise user. Answer the user question in a polite and helpful tone."),
             *([("system", "Only use the provided information in your response.")] if len(citations) else []),
             *[("system", c.textContent) for c in citations],
             *[("human" if h.is_user else "system", h.message) for h in history],
-            ("human", "{user_input}")
         ]
     template = ChatPromptTemplate.from_messages(messages)
     print("Chat prompt and history", messages)
 
-    chain = template | chat_llm
-    ai_msg = chain.invoke({"user_input": query})
+    ai_msg = chat_llm.invoke(messages, {}, max_tokens=1000)
     print("AI Response: ", ai_msg)
 
     thoughts = re.findall(r"<think>.*<\/think>", ai_msg, re.DOTALL)

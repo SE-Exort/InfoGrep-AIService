@@ -65,7 +65,6 @@ def get_file_types():
 class SystemResponseParams(BaseModel):
     chatroom_uuid: str
     history: List[MessageHistory]
-    message: str
     sessionToken: str
 
     embedding_model: str
@@ -84,8 +83,9 @@ def post_system_response(request: Request, p: SystemResponseParams = Body(), db:
                                                       ).exists()).scalar()
     if not exists: return {"error": True, "status": "MODEL_NOT_ALLOWED"}
 
+    user_msg = p.history[0].message
     # assume embedding provider is ollama + milvus
-    citations = vector_search(p.message, p.chatroom_uuid, p.embedding_model, 3)
+    citations = vector_search(user_msg, p.chatroom_uuid, p.embedding_model, 3)
 
     # determine chat provider
     chat_llm = None
@@ -96,7 +96,7 @@ def post_system_response(request: Request, p: SystemResponseParams = Body(), db:
     elif p.chat_provider == "openai":
         chat_llm = openai.llm(p.chat_model, db)
     print("Using chat LLM ", chat_llm, "for request", p)
-    return {"error": False, "data": chat(citations=citations, history=p.history, query=p.message, chat_llm=chat_llm)}
+    return {"error": False, "data": chat(citations=citations, history=p.history, chat_llm=chat_llm)}
 
 @router.get('/models')
 def get_models(request: Request, db: Session = Depends(get_db)):
