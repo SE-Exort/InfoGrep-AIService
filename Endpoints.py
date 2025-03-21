@@ -3,14 +3,15 @@ from typing import List
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 
+from parsers.TXTParser import TxtParser
 from provider.Chat import MessageHistory, chat
 from provider.Cloudflare import Cloudflare
-from provider.Milvus import remove_embeddings, vector_search
+from provider.Milvus import add_embeddings, remove_embeddings, vector_search
 from provider.Ollama import Ollama
 from provider.OpenAI import OpenAI
 from utils import download_model
 from InfoGrep_BackendSDK import authentication_sdk, room_sdk
-from parsers import PDFParser, Parser
+from parsers.PDFParser import PDFParser
 
 from sqlalchemy.orm import Session
 
@@ -25,26 +26,24 @@ supportedFileTypes = dict()
 # for cls in Parser.Parser.__subclasses__():
 #     print(cls.fileType(), cls)
 #     supportedFileTypes.update({cls.fileType(): cls})
-supportedFileTypes.update({'PDF': PDFParser.PDFParser})
+supportedFileTypes.update({'PDF': PDFParser})
+supportedFileTypes.update({'TXT': TxtParser})
 
 ollama, openai, cf = Ollama(), OpenAI(), Cloudflare()
 
 @router.post('/parse_file')
-def post_start_parsing(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
+def parse_file(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
     authentication_sdk.User(cookie, headers=request.headers)
     room_sdk.get_userInRoom(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
+    embedding_model = room['embedding_model']
 
     if filetype not in supportedFileTypes:
         raise Exception(status_code=400, detail=f"Parsing file type {filetype} is not supported")
 
-    try:
-        parser: Parser.Parser = supportedFileTypes[filetype](chatroom_uuid=chatroom_uuid, file_uuid=file_uuid, cookie=cookie, chatroom_embedding_model=room['embedding_model'])
-        parser.startParsing()
-    except Exception as e:
-        print("error running parser", e)
-        return 500
-    return 200
+    ParserClass = supportedFileTypes[filetype]
+    with ParserClass(chatroom_uuid, file_uuid, cookie, embedding_model) as parser:
+        add_embeddings(embedding_model, parser.parse())
 
 class RemoveEmbeddingParams(BaseModel):
     chatroom_uuid: str
@@ -57,7 +56,7 @@ def post_remove_embedding(request: Request, p: RemoveEmbeddingParams = Body()):
     room_sdk.get_userInRoom(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=p.chatroom_uuid, cookie=p.sessionToken, headers=request.headers)
 
-    remove_embeddings(p.chatroom_uuid, room['embedding_model'], ollama.embedding(room['embedding_model']), p.file_uuid)
+    remove_embeddings(p.chatroom_uuid, room['embedding_model'], p.file_uuid)
 
 @router.get('/file_types')
 def get_file_types():
@@ -86,7 +85,7 @@ def post_system_response(request: Request, p: SystemResponseParams = Body(), db:
     if not exists: return {"error": True, "status": "MODEL_NOT_ALLOWED"}
 
     # assume embedding provider is ollama + milvus
-    citations = vector_search(p.message, p.chatroom_uuid, p.embedding_model, ollama.embedding(p.embedding_model), 3)
+    citations = vector_search(p.message, p.chatroom_uuid, p.embedding_model, 3)
 
     # determine chat provider
     chat_llm = None
