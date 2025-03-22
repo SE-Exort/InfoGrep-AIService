@@ -3,6 +3,7 @@ from typing import List
 from fastapi import APIRouter, Body, Depends, Request
 from fastapi.openapi.docs import get_swagger_ui_html
 
+from integrations.confluence import Confluence
 from parsers.TXTParser import TxtParser
 from provider.Chat import MessageHistory, chat
 from provider.Cloudflare import Cloudflare
@@ -29,6 +30,9 @@ supportedFileTypes = dict()
 supportedFileTypes.update({'PDF': PDFParser})
 supportedFileTypes.update({'TXT': TxtParser})
 
+supportedIntegrations = dict()
+supportedIntegrations.update({'confluence': Confluence})
+
 ollama, openai, cf = Ollama(), OpenAI(), Cloudflare()
 
 @router.post('/parse_file')
@@ -44,6 +48,27 @@ def parse_file(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
     ParserClass = supportedFileTypes[filetype]
     with ParserClass(chatroom_uuid, file_uuid, cookie, embedding_model) as parser:
         add_embeddings(embedding_model, parser.parse())
+
+class ParseIntegrationParams(BaseModel):
+    chatroom_uuid: str
+    integration: str
+    config: dict
+    cookie: str
+
+@router.post('/parse_integration')
+def parse_file(request: Request, p: ParseIntegrationParams = Body()):
+    authentication_sdk.User(p.cookie, headers=request.headers)
+    room_sdk.get_userInRoom(chatroom_uuid=p.chatroom_uuid, cookie=p.cookie, headers=request.headers)
+    room = room_sdk.get_room(chatroom_uuid=p.chatroom_uuid, cookie=p.cookie, headers=request.headers)
+    embedding_model = room['embedding_model']
+
+    if p.integration not in supportedIntegrations:
+        raise Exception(status_code=400, detail=f"Parsing integration {p.integration} is not supported")
+
+    IntegrationClass = supportedIntegrations[p.integration]
+    parser = IntegrationClass(p.chatroom_uuid, p.config, p.cookie)
+    add_embeddings(embedding_model, parser.parse())
+    #TODO: support removing embeddings on delete
 
 class RemoveEmbeddingParams(BaseModel):
     chatroom_uuid: str
