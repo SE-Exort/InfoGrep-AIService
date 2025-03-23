@@ -19,3 +19,4 @@ psycopg2-binary
 atlassian-python-api
 langchain_openai
 elasticsearch
+lxml
