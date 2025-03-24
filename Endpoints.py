@@ -111,7 +111,7 @@ def post_system_response(request: Request, p: SystemResponseParams = Body(), db:
                                                       ).exists()).scalar()
     if not exists: return {"error": True, "status": "MODEL_NOT_ALLOWED"}
 
-    user_msg = p.history[0].message
+    user_msg = p.history[-1].message
     # assume embedding provider is ollama + milvus
     citations = vector_search(user_msg, p.chatroom_uuid, p.embedding_model, 3)
 
