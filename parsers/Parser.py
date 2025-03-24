@@ -37,8 +37,12 @@ class Parser(ABC):
         for page in self.get_loader().load():
             # Metadata names are probably not compatible with Milvus naming requirements, clean them beforehand
             page.metadata["chatroom"] = self.chatroom_uuid
+            if 'page' not in page.metadata:
+                page.metadata["page"] = 0
             page.metadata = clean_metadata(page.metadata.items())
+            page.page_content = page.page_content[:65000]
             pages.append(page)
+            print(page)
         return pages
     
     @abstractmethod

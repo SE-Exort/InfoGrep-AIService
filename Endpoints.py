@@ -42,10 +42,13 @@ def parse_file(request: Request, chatroom_uuid, file_uuid, filetype, cookie):
     room = room_sdk.get_room(chatroom_uuid=chatroom_uuid, cookie=cookie, headers=request.headers)
     embedding_model = room['embedding_model']
 
+    global ParserClass
+    ParserClass = None
     if filetype not in supportedFileTypes:
-        raise Exception(status_code=400, detail=f"Parsing file type {filetype} is not supported")
+        ParserClass = TxtParser
+    else:
+        ParserClass = supportedFileTypes[filetype]
 
-    ParserClass = supportedFileTypes[filetype]
     with ParserClass(chatroom_uuid, file_uuid, cookie, embedding_model) as parser:
         add_embeddings(embedding_model, parser.parse())
 
@@ -56,7 +59,7 @@ class ParseIntegrationParams(BaseModel):
     cookie: str
 
 @router.post('/parse_integration')
-def parse_file(request: Request, p: ParseIntegrationParams = Body()):
+def parse_integration(request: Request, p: ParseIntegrationParams = Body()):
     authentication_sdk.User(p.cookie, headers=request.headers)
     room_sdk.get_userInRoom(chatroom_uuid=p.chatroom_uuid, cookie=p.cookie, headers=request.headers)
     room = room_sdk.get_room(chatroom_uuid=p.chatroom_uuid, cookie=p.cookie, headers=request.headers)
